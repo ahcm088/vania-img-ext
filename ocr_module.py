@@ -62,30 +62,3 @@ def extract_text(image_path, preprocess=False):
 
     except Exception as e:
         return f"Error: {e}"
-
-def format_text(text):
-    """
-    Format the extracted text into a more readable format.
-
-    :param text: Extracted text as a string
-    :return: Formatted text as a string
-    """
-    # Split the text into paragraphs
-    paragraphs = text.split('\n\n')
-
-    # Format each paragraph
-    formatted_paragraphs = []
-    for paragraph in paragraphs:
-        # Split the paragraph into lines
-        lines = paragraph.split('\n')
-        # Remove empty lines and strip whitespace
-        lines = [line.strip() for line in lines if line.strip()]
-        # Join lines with a single newline character
-        formatted_paragraph = '\n'.join(lines)
-        # Add the formatted paragraph to the list
-        formatted_paragraphs.append(formatted_paragraph)
-
-    # Join paragraphs with double newline characters
-    formatted_text = '\n\n'.join(formatted_paragraphs)
-
-    return formatted_text
