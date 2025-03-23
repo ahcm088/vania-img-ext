@@ -1,64 +1,67 @@
 import os
-from PIL import Image
 import cv2
 import easyocr
+import matplotlib.pyplot as plt
 
-def extract_text(image_path, preprocess=False):
-    """
-    Extract text including numbers from the given image using EasyOCR.
+def ensure_directory(directory):
+    """Ensure the directory exists, creating it if necessary."""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-    :param image_path: Path to the image file
-    :param preprocess: Boolean flag to apply OpenCV preprocessing
-    :return: Extracted text as a formatted string
-    """
+def get_user_window_size(image_path, initial_size):
+    image = cv2.imread(image_path)
+    if image is None:
+        print("Error: Could not load image.")
+        return initial_size
+    
+    height, width = image.shape[:2]
+    while True:
+        window_width, window_height = initial_size
+        cropped = image[0:window_height, 0:window_width]
+        cropped_rgb = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
+        plt.imshow(cropped_rgb)
+        plt.title(f"Window Size: {window_width}x{window_height}")
+        plt.axis("off")
+        plt.show()
+        user_input = input(f"Current window size: {window_width}x{window_height}. Keep it? (y/n): ").strip().lower()
+        if user_input == "y":
+            return (window_width, window_height)
+        elif user_input == "n":
+            try:
+                window_width = int(input("Enter new width: "))
+                window_height = int(input("Enter new height: "))
+                initial_size = (window_width, window_height)
+            except ValueError:
+                print("Invalid input. Please enter numeric values.")
+        else:
+            print("Invalid option. Type 'y' to confirm or 'n' to modify the window size.")
+
+def extract_text_with_window(image_path, window_size=(100, 100), preprocess=False):
     try:
+        image = cv2.imread(image_path)
         if preprocess:
-            # Open the image with OpenCV
-            image = cv2.imread(image_path)
-
-            # Convert to grayscale
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-            # Apply binarization (Thresholding) to enhance readability
             _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-            # Save the processed image
-            output_image_path = os.path.join('outputs', 'preprocess_img.png')
-            cv2.imwrite(output_image_path, binary)
-
-            print(f"Processed image saved to: {output_image_path}")
-
-            # The binary image is already a NumPy array, no need to convert to Pillow format
             processed_image = binary
         else:
-            # Open image directly with OpenCV (as a NumPy array)
-            processed_image = cv2.imread(image_path)
-
-        # Initialize EasyOCR reader with Portuguese language
-        reader = easyocr.Reader(['pt'])  # 'pt' is the code for Portuguese
-
-        # Extract text with OCR using EasyOCR
-        result = reader.readtext(processed_image)
-
-        # Create formatted text by joining text within each detected line
-        formatted_text = ''
-        current_line = []
-
-        for item in result:
-            text = item[1]
-            # If the text is separated by a reasonable amount of space (line break)
-            # we assume it's a new line, otherwise we continue on the same line.
-            if len(current_line) == 0 or abs(item[0][0][1] - item[0][2][1]) < 15:  # Compare Y positions
-                current_line.append(text)
-            else:
-                formatted_text += ' '.join(current_line) + '\n'
-                current_line = [text]
-
-        # Add the last line if there is one
-        if current_line:
-            formatted_text += ' '.join(current_line)
-
-        return formatted_text.strip()
-
+            processed_image = image
+        
+        reader = easyocr.Reader(['pt'])
+        height, width = processed_image.shape[:2]
+        window_width, window_height = window_size
+        extracted_text = []
+        save_dir = "outputs/subfigs"
+        ensure_directory(save_dir)
+        
+        for y in range(0, height - window_height + 1, window_height):
+            for x in range(0, width - window_width + 1, window_width):
+                window = processed_image[y:y + window_height, x:x + window_width]
+                window_filename = os.path.join(save_dir, f"window_{x}_{y}.png")
+                cv2.imwrite(window_filename, window)
+                result = reader.readtext(window)
+                window_text = ' '.join([item[1] for item in result]).strip()
+                if window_text:
+                    extracted_text.append(f"Window ({x}, {y}) - ({x + window_width}, {y + window_height}):\n{window_text}\n")
+        return '\n'.join(extracted_text)
     except Exception as e:
         return f"Error: {e}"
