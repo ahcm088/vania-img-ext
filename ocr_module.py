@@ -1,11 +1,11 @@
 import os
 from PIL import Image
-import pytesseract
 import cv2
+import easyocr
 
 def extract_text(image_path, preprocess=False):
     """
-    Extract text including numbers from the given image using Tesseract OCR.
+    Extract text including numbers from the given image using EasyOCR.
 
     :param image_path: Path to the image file
     :param preprocess: Boolean flag to apply OpenCV preprocessing
@@ -28,18 +28,37 @@ def extract_text(image_path, preprocess=False):
 
             print(f"Processed image saved to: {output_image_path}")
 
-            # Convert processed image to a format compatible with Pillow
-            processed_image = Image.fromarray(binary)
+            # The binary image is already a NumPy array, no need to convert to Pillow format
+            processed_image = binary
         else:
-            # Open image directly without preprocessing
-            processed_image = Image.open(image_path)
+            # Open image directly with OpenCV (as a NumPy array)
+            processed_image = cv2.imread(image_path)
 
-        # Tesseract configuration (no whitelist or blacklist, allowing all characters)
-        custom_config = "--oem 3 --psm 6"
+        # Initialize EasyOCR reader with Portuguese language
+        reader = easyocr.Reader(['pt'])  # 'pt' is the code for Portuguese
 
-        # Extract text with OCR
-        text = pytesseract.image_to_string(processed_image, config=custom_config)
+        # Extract text with OCR using EasyOCR
+        result = reader.readtext(processed_image)
 
-        return text.strip()
+        # Create formatted text by joining text within each detected line
+        formatted_text = ''
+        current_line = []
+
+        for item in result:
+            text = item[1]
+            # If the text is separated by a reasonable amount of space (line break)
+            # we assume it's a new line, otherwise we continue on the same line.
+            if len(current_line) == 0 or abs(item[0][0][1] - item[0][2][1]) < 15:  # Compare Y positions
+                current_line.append(text)
+            else:
+                formatted_text += ' '.join(current_line) + '\n'
+                current_line = [text]
+
+        # Add the last line if there is one
+        if current_line:
+            formatted_text += ' '.join(current_line)
+
+        return formatted_text.strip()
+
     except Exception as e:
         return f"Error: {e}"
