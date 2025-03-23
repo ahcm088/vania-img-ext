@@ -55,10 +55,16 @@ python main.py path/to/your/image.png --window_size 150 150
 
 ### Example
 
-Suppose you have an image named `example.png` in the same directory as the script. You can extract text from it as follows:
+Suppose you have an image named `img4.png` in the `img/` folder in the project's directory. You can extract text from it as follows:
 
 ```bash
-python main.py example.png --preprocess --window_size 150 150
+python main.py .\img\img4.png --window_size 500 800
+```
+
+Or using the `preprocess` flag:
+
+```bash
+python main.py .\img\img4.png --window_size 500 800 --preprocess
 ```
 
 The script will output the extracted text to the console.
