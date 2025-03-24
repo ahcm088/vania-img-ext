@@ -1,12 +1,12 @@
-# OCR Text Extraction Project using EasyOCR with Sliding Window
+# OCR Text Extraction Project using EasyOCR with DBSCAN Clustering
 
-This Python project is designed to extract text, including numbers, from images using EasyOCR with a sliding window approach. The project consists of two main files: `ocr_module.py` and `main.py`. The `ocr_module.py` file contains the core functionality for text extraction, while `main.py` provides a command-line interface to interact with the OCR module.
+This Python project is designed to extract text, including numbers, from images using EasyOCR with DBSCAN clustering to group text regions. The project consists of two main files: `ocr_module.py` and `main.py`. The `ocr_module.py` file contains the core functionality for text extraction and grouping, while `main.py` provides a command-line interface to interact with the OCR module.
 
 ## Features
 
-- **Text Extraction**: Extract text and numbers from images using EasyOCR with a sliding window.
-- **Interactive Window Size Adjustment**: Allows users to interactively adjust the size of the sliding window for better text extraction.
-- **Image Preprocessing**: Optionally preprocess images using OpenCV to enhance OCR accuracy.
+- **Text Extraction**: Extract text and numbers from images using EasyOCR.
+- **Text Grouping**: Group detected text regions using DBSCAN clustering to reconstruct text order.
+- **Image Preprocessing**: Preprocess images using adaptive thresholding to enhance OCR accuracy.
 - **Command-Line Interface**: Easily extract text from images via the command line.
 
 ## Requirements
@@ -14,21 +14,16 @@ This Python project is designed to extract text, including numbers, from images 
 To run this project, you need the following dependencies:
 
 - Python 3.x
+- [Torch](https://pytorch.org/) (CPU-only version, required for EasyOCR)
 - [EasyOCR](https://github.com/JaidedAI/EasyOCR) (Python wrapper for EasyOCR)
-- [OpenCV](https://opencv.org/) (Optional, for image preprocessing)
-- [Matplotlib](https://matplotlib.org/) (For displaying images during window size adjustment)
-- [Torch](https://pytorch.org/) (CPU-only version)
+- [OpenCV](https://opencv.org/) (For image preprocessing and bounding box visualization)
+- [scikit-learn](https://scikit-learn.org/) (For DBSCAN clustering)
 
-Make sure you have installed the CPU-only version of PyTorch, torchvision, and torchaudio:
+Install the required dependencies using pip:
 
 ```bash
 pip install torch torchvision torchaudio
-```
-
-Now, you can install the main Python dependencies using pip:
-
-```bash
-pip install easyocr opencv-python matplotlib
+pip install easyocr opencv-python scikit-learn
 ```
 
 ## Usage
@@ -41,16 +36,10 @@ To extract text from an image, use the `main.py` script with the following comma
 python main.py path/to/your/image.png
 ```
 
-If you want to enable image preprocessing (recommended for noisy or low-quality images), use the `--preprocess` flag:
+You can also adjust the `eps` parameter for DBSCAN clustering (default is 50) using the `--eps` flag:
 
 ```bash
-python main.py path/to/your/image.png --preprocess
-```
-
-You can also specify the initial window size using the `--window_size` argument:
-
-```bash
-python main.py path/to/your/image.png --window_size 150 150
+python main.py path/to/your/image.png --eps 75
 ```
 
 ### Example
@@ -58,35 +47,35 @@ python main.py path/to/your/image.png --window_size 150 150
 Suppose you have an image named `img4.png` in the `img/` folder in the project's directory. You can extract text from it as follows:
 
 ```bash
-python main.py .\img\img4.png --window_size 500 800
+python main.py .\img\img4.png
 ```
 
-Or using the `preprocess` flag:
+Or with a custom `eps` value:
 
 ```bash
-python main.py .\img\img4.png --window_size 500 800 --preprocess
+python main.py .\img\img4.png --eps 200
 ```
 
-The script will output the extracted text to the console.
+The script will output the extracted and grouped text to the console.
 
 ### Output
 
-The script will print the extracted text to the console. The extracted text from each window will be saved in the `outputs/subfigs` directory as individual image files.
+The script will print the extracted and grouped text to the console. The cropped text regions and the image with bounding boxes will be saved in the `outputs/cropped_texts/` directory.
 
 ## Code Overview
 
 ### `ocr_module.py`
 
-This module contains the `extract_text_with_window` and `get_user_window_size` functions, which perform the following tasks:
+This module contains the following functions:
 
-1. **Interactive Window Size Adjustment**: Allows the user to interactively adjust the size of the sliding window.
-2. **Image Preprocessing (Optional)**: If the `preprocess` flag is enabled, the image is converted to grayscale and binarized using OpenCV to improve OCR accuracy.
-3. **Text Extraction**: The processed or original image is passed to EasyOCR to extract text using a sliding window approach.
-4. **Error Handling**: The function includes basic error handling to catch and report any issues during text extraction.
+1. **`ensure_directory(directory)`**: Ensures the specified directory exists, creating it if necessary.
+2. **`preprocess_image(image_path)`**: Applies adaptive thresholding to the image for better text detection.
+3. **`group_text_boxes(results, original_image, save_dir, eps, min_samples)`**: Groups bounding boxes using DBSCAN clustering and saves cropped text regions and the image with bounding boxes.
+4. **`extract_text_with_grouping(image_path, eps)`**: Extracts text from the image, groups it using DBSCAN clustering, and returns the formatted grouped text.
 
 ### `main.py`
 
-This script provides a command-line interface for the OCR module. It uses the `argparse` library to parse command-line arguments and calls the `extract_text_with_window` and `get_user_window_size` functions from `ocr_module.py`.
+This script provides a command-line interface for the OCR module. It uses the `argparse` library to parse command-line arguments and calls the `extract_text_with_grouping` function from `ocr_module.py`.
 
 ## Directory Structure
 
@@ -94,19 +83,18 @@ This script provides a command-line interface for the OCR module. It uses the `a
 .
 ├── ocr_module.py          # Core OCR functionality
 ├── main.py                # Command-line interface
-├── outputs/               # Directory for processed images and subfigures (created automatically)
-│   └── subfigs/           # Directory for individual window images
+├── outputs/               # Directory for processed images and cropped text regions (created automatically)
+│   └── cropped_texts/     # Directory for cropped text regions and detected text image
 └── README.md              # This file
 ```
 
 ## Notes
 
 - Ensure that the `outputs` directory exists or create it manually before running the script.
+- The `eps` parameter in DBSCAN clustering controls the proximity threshold for grouping text regions. Adjust it based on the image and text layout.
 - Preprocessing is recommended for images with poor quality or complex backgrounds.
-- The interactive window size adjustment feature allows for better control over the text extraction process.
+- **Torch** is required for EasyOCR to function. If you encounter issues, ensure you have installed the correct version of Torch for your system.
 
 ## License
 
 This project is open-source and available under the MIT License. Feel free to modify and distribute it as needed.
-
----
